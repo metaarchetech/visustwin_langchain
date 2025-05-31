@@ -156,3 +156,62 @@ data_map*
 *replit*
 
 .env.gcp.yaml
+
+# === Omniverse Semantic Platform 專用 ===
+
+# Streamlit 相關
+.streamlit/
+streamlit_cache/
+*.streamlit
+
+# Ollama 和 LLM 模型
+*.gguf
+*.bin
+models/
+ollama_data/
+
+# 臨時檔案和快取
+temp/
+cache/
+*.tmp
+*.temp
+
+# Omniverse 相關
+*.exe
+*.installer
+OllamaSetup.exe
+omniverse_installer/
+
+# AI 生成的代碼記錄 (如果包含敏感資訊)
+generated_codes/
+execution_logs/
+
+# 配置檔案 (包含 API 金鑰的)
+config.yaml
+secrets.yaml
+api_keys.json
+
+# 本地測試檔案
+test_*.py
+debug_*.py
+local_test/
+
+# 資料庫和持久化檔案
+*.db
+*.sqlite
+*.sqlite3
+session_data/
+
+# Jupyter Notebooks 輸出
+*.ipynb_checkpoints/
+output/
+
+# 用戶上傳的檔案
+uploads/
+user_data/
+
+# 日誌檔案
+*.log
+logs/
+debug.log
+error.log

@@ -1,0 +1,31 @@
+# Core dependencies
+streamlit>=1.28.0
+langchain>=0.1.0
+langchain-community>=0.0.10
+fastapi>=0.100.0
+uvicorn>=0.20.0
+pydantic>=2.0.0
+
+# AI and ML
+ollama>=0.1.0
+
+# Web and API
+requests>=2.28.0
+httpx>=0.24.0
+
+# Utilities
+python-dotenv>=1.0.0
+pyperclip>=1.8.2
+
+# Optional: For clipboard functionality
+pyperclip>=1.8.2
+
+# Development dependencies (optional)
+pytest>=7.0.0
+pytest-cov>=4.0.0
+black>=23.0.0
+flake8>=6.0.0
+
+# Note: Omniverse-specific dependencies (omni.usd, omni.kit.commands, pxr) 
+# are only available in Omniverse Kit environment or with USD standalone installation
+# These will be automatically detected and the platform will run in simulation mode if not available 
