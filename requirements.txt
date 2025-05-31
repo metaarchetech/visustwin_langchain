@@ -17,6 +17,11 @@ httpx>=0.24.0
 python-dotenv>=1.0.0
 pyperclip>=1.8.2
 
+# Voice interaction dependencies
+SpeechRecognition>=3.10.0
+pyttsx3>=2.90
+pyaudio>=0.2.11
+
 # Optional: For clipboard functionality
 pyperclip>=1.8.2
 
@@ -28,4 +33,9 @@ flake8>=6.0.0
 
 # Note: Omniverse-specific dependencies (omni.usd, omni.kit.commands, pxr) 
 # are only available in Omniverse Kit environment or with USD standalone installation
-# These will be automatically detected and the platform will run in simulation mode if not available 
+# These will be automatically detected and the platform will run in simulation mode if not available
+
+# Voice interaction notes:
+# - SpeechRecognition: 語音識別核心庫
+# - pyttsx3: 跨平台文字轉語音引擎
+# - pyaudio: 音頻錄製和播放（可能需要額外系統依賴） 

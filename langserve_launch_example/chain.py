@@ -3,7 +3,7 @@
 Edit this file to implement your chain logic.
 """
 
-from langchain_community.llms import Ollama
+from langchain_ollama import OllamaLLM
 from langchain.prompts import PromptTemplate
 from langchain.schema.runnable import Runnable
 from langchain.schema.output_parser import StrOutputParser
@@ -30,8 +30,8 @@ def get_chain() -> Runnable:
 系統回應："""
     )
     
-    # 使用 Ollama 本地模型 (llama3.2:3b 已下載完成)
-    model = Ollama(model="llama3.2:3b")
+    # 使用新的 OllamaLLM 模型 (llama3.2:3b 已下載完成)
+    model = OllamaLLM(model="llama3.2:3b")
     
     # 使用字串輸出解析器
     parser = StrOutputParser()

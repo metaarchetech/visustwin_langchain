@@ -1,5 +1,8 @@
 import streamlit as st
 import time
+import requests
+import json
+import pyperclip
 from langserve_launch_example.chain import get_chain
 # 導入代碼生成器 (需要處理 import 錯誤)
 try:
@@ -8,6 +11,7 @@ try:
 except ImportError:
     CODE_GEN_AVAILABLE = False
     print("代碼生成器不可用：Omniverse 模組未安裝")
+from speech_module import get_voice_manager
 
 # 設置頁面配置
 st.set_page_config(
@@ -229,35 +233,59 @@ st.markdown('<p class="big-font">企業級智能語意分析與協作開發環�
 
 # 側邊欄
 with st.sidebar:
-    st.markdown("## 核心功能")
+    st.markdown("### 🎛️ 平台控制")
     
-    st.markdown("""
-    <div class="feature-box">
-        <h3>語意檢索</h3>
-        <p>深度理解項目結構與技術文檔內容語意</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # 語音狀態顯示
+    voice_manager = get_voice_manager()
     
-    st.markdown("""
-    <div class="feature-box">
-        <h3>代碼生成</h3>
-        <p>AI 驅動的 Omniverse Python 腳本自動生成</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("**🎤 語音狀態**")
+    if voice_manager.mic_available:
+        st.success("✅ 麥克風就緒")
+    else:
+        st.error("❌ 麥克風未就緒")
     
-    st.markdown("""
-    <div class="feature-box">
-        <h3>智能協作</h3>
-        <p>提供上下文相關的開發建議與解決方案</p>
-    </div>
-    """, unsafe_allow_html=True)
+    if voice_manager.tts_engine:
+        st.success("✅ 語音合成就緒")
+    else:
+        st.error("❌ 語音合成未就緒")
     
+    # 語音診斷工具
+    with st.expander("🔧 語音診斷", expanded=False):
+        if st.button("🔍 測試麥克風", key="test_mic_sidebar"):
+            test_result = voice_manager.test_microphone()
+            if "error" in test_result:
+                st.error(f"❌ {test_result['error']}")
+            else:
+                st.success("✅ 麥克風測試通過")
+                st.info(f"能量閾值: {test_result['energy_threshold']}")
+        
+        if st.button("⏹️ 停止語音", key="stop_voice_sidebar"):
+            voice_manager.stop_speaking()
+            st.info("⏹️ 已停止")
+        
+        if st.button("🔄 重置語音引擎", key="reset_voice"):
+            st.cache_resource.clear()
+            st.success("✅ 已重置")
+    
+    st.markdown("---")
+    
+    st.markdown("### 🌟 核心功能")
     st.markdown("""
-    <div class="feature-box">
-        <h3>平台整合</h3>
-        <p>無縫連接 Omniverse 生態系統各項服務</p>
-    </div>
-    """, unsafe_allow_html=True)
+    **語意整合**
+    - 深度技術分析
+    - 最佳實踐建議
+    - 上下文理解
+
+    **代碼生成**
+    - 自然語言轉代碼
+    - 安全執行環境
+    - 即時預覽功能
+    
+    **語音互動**
+    - 語音提問直接回覆
+    - AI 回覆自動朗讀
+    - 免手動操作
+    """)
     
     # 狀態顯示
     code_gen_status = "已啟用" if CODE_GEN_AVAILABLE else "模擬模式"
@@ -270,16 +298,72 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     
     # 清除對話按鈕
-    if st.button("清除會話記錄", type="secondary"):
+    if st.button("🗑️ 清除會話記錄", type="secondary"):
         st.session_state.messages = []
         st.session_state.generated_codes = []
+        if 'last_ai_response' in st.session_state:
+            del st.session_state['last_ai_response']
         st.rerun()
 
 # 主要內容區域 - 使用標籤頁
-tab1, tab2, tab3 = st.tabs(["語意查詢", "代碼生成器", "執行記錄"])
+tab1, tab2, tab3 = st.tabs(["🧠 語意查詢", "🤖 代碼生成器", "📝 執行記錄"])
 
-# 標籤頁 1: 語意查詢
+# 標籤頁 1: 語意查詢 (整合語音功能)
 with tab1:
+    # 簡化的語音控制
+    voice_manager = get_voice_manager()
+    
+    voice_col1, voice_col2, voice_col3 = st.columns([2, 2, 6])
+    
+    with voice_col1:
+        if st.button("🎤 語音提問", key="voice_input_main", use_container_width=True):
+            if voice_manager.mic_available:
+                with st.spinner("🎤 正在聽您說話..."):
+                    recognized_text = voice_manager.listen_for_speech(timeout=15, phrase_timeout=5)
+                    
+                if recognized_text:
+                    st.success(f"✅ {recognized_text}")
+                    
+                    # 直接處理語音查詢，自動提交
+                    st.session_state.messages.append({"role": "user", "content": recognized_text})
+                    
+                    with st.spinner('🧠 AI 分析中...'):
+                        try:
+                            # 調用AI鏈
+                            response = st.session_state.chain.invoke({"topic": recognized_text})
+                            
+                            # 添加AI回應
+                            st.session_state.messages.append({"role": "assistant", "content": response})
+                            
+                            # 保存最新回應供語音播放
+                            st.session_state.last_ai_response = response
+                            
+                            # 自動朗讀回覆
+                            voice_manager.speak_text(response)
+                            
+                            # 重新運行以更新界面
+                            st.rerun()
+                            
+                        except Exception as e:
+                            st.error(f"❌ 系統錯誤：{str(e)}")
+                else:
+                    st.error("❌ 未識別到語音，請重試")
+            else:
+                st.error("❌ 麥克風不可用")
+    
+    with voice_col2:
+        if st.button("🔊 重播回覆", key="voice_read_response", use_container_width=True):
+            if 'last_ai_response' in st.session_state and st.session_state.last_ai_response:
+                voice_manager.speak_text(st.session_state.last_ai_response)
+                st.success("🔊 正在播放...")
+            else:
+                st.warning("⚠️ 沒有回覆內容")
+    
+    with voice_col3:
+        st.empty()  # 留白空間
+    
+    st.markdown("---")
+
     # 支援的組件展示
     st.markdown("## 支援的技術領域")
 
@@ -308,14 +392,14 @@ with tab1:
         if message["role"] == "user":
             st.markdown(f"""
             <div class="query-box">
-                <strong>查詢內容：</strong><br>
+                <strong>🎯 查詢內容：</strong><br>
                 {message["content"]}
             </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown(f"""
             <div class="response-box">
-                <strong>系統回應：</strong><br>
+                <strong>🤖 AI 回應：</strong><br>
                 {message["content"]}
             </div>
             """, unsafe_allow_html=True)
@@ -345,17 +429,16 @@ with tab1:
             example_query = "Physics 模擬引擎與場景物件的整合實作方式"
             st.session_state.example_query = example_query
 
-    # 檢查是否有範例查詢
+    # 檢查範例查詢
+    initial_query = ""
     if 'example_query' in st.session_state:
-        user_input = st.session_state.example_query
+        initial_query = st.session_state.example_query
         del st.session_state.example_query
-    else:
-        user_input = ""
 
     # 用戶輸入區域
     user_query = st.text_area(
-        "請輸入您的技術查詢：",
-        value=user_input,
+        "請輸入您的技術查詢（或使用🎤語音提問）：",
+        value=initial_query,
         height=100,
         placeholder="例如：如何實作 USD Stage 的層級變換與屬性繼承機制？",
         key="semantic_query"
@@ -363,15 +446,15 @@ with tab1:
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        submit_button = st.button("提交查詢", type="primary", use_container_width=True)
+        submit_button = st.button("🚀 提交查詢", type="primary", use_container_width=True)
 
-    # 處理查詢
+    # 處理文字查詢
     if submit_button and user_query.strip():
         # 添加用戶消息
         st.session_state.messages.append({"role": "user", "content": user_query})
         
         # 顯示載入動畫
-        with st.spinner('系統分析中...'):
+        with st.spinner('🧠 AI 正在深度分析中...'):
             try:
                 # 調用AI鏈
                 response = st.session_state.chain.invoke({"topic": user_query})
@@ -379,15 +462,18 @@ with tab1:
                 # 添加AI回應
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 
+                # 保存最新回應供語音播放
+                st.session_state.last_ai_response = response
+                
                 # 重新運行以更新界面
                 st.rerun()
                 
             except Exception as e:
-                st.error(f"系統錯誤：{str(e)}")
+                st.error(f"❌ 系統錯誤：{str(e)}")
                 st.error("請確認 Ollama 語意引擎服務正常運行，且 llama3.2:3b 模型已正確載入。")
 
     elif submit_button and not user_query.strip():
-        st.warning("請輸入查詢內容後再提交。")
+        st.warning("⚠️ 請輸入查詢內容或使用語音輸入。")
 
 # 標籤頁 2: 代碼生成器
 with tab2:
