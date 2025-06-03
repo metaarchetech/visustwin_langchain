@@ -3,17 +3,25 @@ Omniverse Python 代碼生成器
 專門生成可執行的 Omniverse Python 腳本
 """
 
-from langchain_community.llms import Ollama
-from langchain.prompts import PromptTemplate
+from langchain_groq import ChatGroq
+from langchain.prompts import ChatPromptTemplate
 from langchain.schema.runnable import Runnable
 from langchain.schema.output_parser import StrOutputParser
-import omni.usd
-import omni.kit.commands
+from groq_config import groq_config
 import json
 import traceback
 import sys
 import io
 from contextlib import redirect_stdout, redirect_stderr
+
+# 模擬 Omniverse 模組（若未安裝）
+try:
+    import omni.usd
+    import omni.kit.commands
+    OMNIVERSE_AVAILABLE = True
+except ImportError:
+    OMNIVERSE_AVAILABLE = False
+    print("注意：Omniverse 模組未安裝，將運行在模擬模式")
 
 
 class OmniverseCodeGenerator:
@@ -26,10 +34,8 @@ class OmniverseCodeGenerator:
     def _create_code_generation_chain(self) -> Runnable:
         """創建代碼生成鏈"""
         
-        prompt = PromptTemplate.from_template(
-            """您是 Omniverse Python 代碼生成專家，專門撰寫高品質的 Omniverse Python 腳本。
-
-用戶需求：{request}
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """您是 Omniverse Python 代碼生成專家，專門撰寫高品質的 Omniverse Python 腳本。
 
 請基於以下 Omniverse API 知識庫生成 Python 代碼：
 
@@ -122,12 +128,18 @@ translate_attr.Set(Gf.Vec3d(10, 0, 0), Usd.TimeCode(60))
 
 ```python
 # 您生成的代碼
-```
-
-生成的代碼："""
+```"""),
+            ("human", "用戶需求：{request}")
+        ])
+        
+        # 使用 Groq 替代 Ollama（專用於代碼生成的高速模型）
+        model = ChatGroq(
+            groq_api_key=groq_config.api_key,
+            model_name=groq_config.get_model("code"),
+            temperature=0.3,  # 較低溫度以提高代碼準確性
+            max_tokens=2000   # 更長的輸出以支援複雜代碼
         )
         
-        model = Ollama(model="llama3.2:3b")
         parser = StrOutputParser()
         
         return prompt | model | parser
