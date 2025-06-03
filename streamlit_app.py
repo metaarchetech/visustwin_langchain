@@ -222,6 +222,11 @@ if 'chain' not in st.session_state:
     st.session_state.chain = get_chain()
 if 'generated_codes' not in st.session_state:
     st.session_state.generated_codes = []
+# 添加引擎狀態緩存
+if 'last_engine_check' not in st.session_state:
+    st.session_state.last_engine_check = 0
+if 'engine_status_cache' not in st.session_state:
+    st.session_state.engine_status_cache = None
 
 # 主標題
 st.markdown('<h1 class="stTitle">Omniverse 語意整合平台</h1>', unsafe_allow_html=True)
@@ -261,13 +266,111 @@ with st.sidebar:
     
     # 狀態顯示
     code_gen_status = "已啟用" if CODE_GEN_AVAILABLE else "模擬模式"
+    
+    # 引擎選擇和狀態
+    st.markdown("### AI 引擎設定")
+    
+    # 取得引擎狀態 (使用緩存避免頻繁檢查)
+    try:
+        from groq_config import engine_config
+        import time
+        
+        # 檢查是否需要刷新狀態 (每30秒刷新一次)
+        current_time = time.time()
+        should_refresh = (current_time - st.session_state.last_engine_check > 30) or st.session_state.engine_status_cache is None
+        
+        if should_refresh:
+            engine_status = engine_config.get_engine_status(force_refresh=False)
+            st.session_state.engine_status_cache = engine_status
+            st.session_state.last_engine_check = current_time
+        else:
+            engine_status = st.session_state.engine_status_cache
+        
+        available_engines = engine_status["available_engines"]
+        current_engine = engine_status["current_engine"]
+        current_model = engine_status["current_model"]
+        
+        # 引擎選擇器
+        engine_options = []
+        if available_engines.get("groq", False):
+            engine_options.append("groq")
+        if available_engines.get("ollama", False):
+            engine_options.append("ollama")
+        
+        # 如果沒有檢測到可用引擎，但當前引擎是 groq，仍然顯示 groq 選項
+        if not engine_options and current_engine == "groq":
+            engine_options.append("groq")
+        
+        if engine_options:
+            selected_engine = st.selectbox(
+                "選擇 AI 引擎:",
+                options=engine_options,
+                index=engine_options.index(current_engine) if current_engine in engine_options else 0,
+                format_func=lambda x: f"{'🌐 Groq (雲端)' if x == 'groq' else '💻 Ollama (本地)'}"
+            )
+            
+            # 切換引擎
+            if selected_engine != current_engine:
+                with st.spinner(f'正在切換到 {selected_engine.upper()} 引擎...'):
+                    if engine_config.switch_engine(selected_engine):
+                        st.success(f"已切換到 {selected_engine.upper()} 引擎！")
+                        # 清除緩存，強制重新檢查
+                        st.session_state.engine_status_cache = None
+                        st.session_state.last_engine_check = 0
+                        st.rerun()
+                    else:
+                        st.error(f"切換到 {selected_engine.upper()} 失敗")
+        else:
+            st.error("沒有可用的 AI 引擎")
+        
+        # 引擎狀態顯示
+        engine_name = "Groq" if current_engine == "groq" else "Ollama"
+        engine_icon = "🌐" if current_engine == "groq" else "💻"
+        
+        # 只測試當前引擎的連接，避免測試其他引擎
+        if current_engine in available_engines:
+            connection_status = "已連接" if available_engines[current_engine] else "連接失敗"
+            connection_color = "#00ff41" if available_engines[current_engine] else "#ff4444"
+        else:
+            # 如果沒有在 available_engines 中，直接測試當前引擎
+            is_connected = engine_config.test_connection()
+            connection_status = "已連接" if is_connected else "連接失敗"
+            connection_color = "#00ff41" if is_connected else "#ff4444"
+        
+    except Exception as e:
+        engine_name = "未知"
+        engine_icon = "❌"
+        current_model = "配置錯誤"
+        connection_status = "配置錯誤"
+        connection_color = "#ff4444"
+        print(f"引擎狀態檢查錯誤: {e}")  # 調試用
+    
     st.markdown(f"""
     <div class="status-box">
         <strong>系統狀態：</strong> 運行中<br>
-        <strong>語意引擎：</strong> Ollama (llama3.2:3b)<br>
+        <strong>AI 引擎：</strong> {engine_icon} {engine_name} ({current_model})<br>
+        <strong>連接狀態：</strong> <span style="color: {connection_color};">{connection_status}</span><br>
         <strong>代碼生成：</strong> {code_gen_status}
     </div>
     """, unsafe_allow_html=True)
+    
+    # 手動刷新按鈕和狀態提示
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("🔄 刷新狀態", help="手動刷新引擎連接狀態"):
+            st.session_state.engine_status_cache = None
+            st.session_state.last_engine_check = 0
+            st.rerun()
+    
+    with col2:
+        # 顯示緩存狀態
+        if hasattr(st.session_state, 'last_engine_check') and st.session_state.last_engine_check > 0:
+            import time
+            time_since_check = int(time.time() - st.session_state.last_engine_check)
+            if time_since_check < 30:
+                st.caption(f"📍 狀態已緩存 ({time_since_check}s 前更新)")
+            else:
+                st.caption("📍 狀態需要更新")
     
     # 清除對話按鈕
     if st.button("清除會話記錄", type="secondary"):
@@ -384,7 +487,21 @@ with tab1:
                 
             except Exception as e:
                 st.error(f"系統錯誤：{str(e)}")
-                st.error("請確認 Ollama 語意引擎服務正常運行，且 llama3.2:3b 模型已正確載入。")
+                
+                # 根據當前引擎提供不同的錯誤建議
+                try:
+                    from groq_config import engine_config
+                    current_engine = engine_config.get_current_engine()
+                    
+                    if current_engine == "groq":
+                        st.error("請確認 Groq API 服務正常運行，且您的 API 金鑰有效。如需協助請檢查 groq_config.py 配置。")
+                        st.info("💡 提示：您可以嘗試切換到 Ollama 本地引擎作為備選方案。")
+                    else:
+                        st.error("請確認 Ollama 服務正常運行，且 llama3.2:3b 模型已正確載入。")
+                        st.info("💡 提示：您可以嘗試切換到 Groq 雲端引擎作為備選方案。")
+                        
+                except Exception:
+                    st.error("AI 引擎出現問題，請檢查配置或嘗試切換引擎。")
 
     elif submit_button and not user_query.strip():
         st.warning("請輸入查詢內容後再提交。")
@@ -570,7 +687,7 @@ st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #76B900; padding: 2rem;">
     <p><strong>Omniverse 語意整合平台</strong> | 
-    基於 <strong>LangChain</strong> 語意框架 與 <strong>Ollama</strong> 本地推理引擎 | 
+    基於 <strong>LangChain</strong> 語意框架 與 <strong>Groq</strong> 雲端推理引擎 | 
     <strong>Streamlit</strong> 企業級界面</p>
     <p style="color: #cccccc;"><em>提升團隊協作效率，加速 Omniverse 項目開發進程</em></p>
 </div>

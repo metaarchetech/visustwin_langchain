@@ -4,10 +4,10 @@ Omniverse Python 代碼生成器
 """
 
 from langchain_groq import ChatGroq
-from langchain.prompts import ChatPromptTemplate
+from langchain.prompts import ChatPromptTemplate, PromptTemplate
 from langchain.schema.runnable import Runnable
 from langchain.schema.output_parser import StrOutputParser
-from groq_config import groq_config
+from groq_config import engine_config
 import json
 import traceback
 import sys
@@ -34,8 +34,11 @@ class OmniverseCodeGenerator:
     def _create_code_generation_chain(self) -> Runnable:
         """創建代碼生成鏈"""
         
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """您是 Omniverse Python 代碼生成專家，專門撰寫高品質的 Omniverse Python 腳本。
+        # 根據當前引擎選擇合適的提示模板
+        if engine_config.get_current_engine() == "groq":
+            # Groq 使用 ChatPromptTemplate
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", """您是 Omniverse Python 代碼生成專家，專門撰寫高品質的 Omniverse Python 腳本。
 
 請基於以下 Omniverse API 知識庫生成 Python 代碼：
 
@@ -129,13 +132,114 @@ translate_attr.Set(Gf.Vec3d(10, 0, 0), Usd.TimeCode(60))
 ```python
 # 您生成的代碼
 ```"""),
-            ("human", "用戶需求：{request}")
-        ])
+                ("human", "用戶需求：{request}")
+            ])
+        else:
+            # Ollama 使用 PromptTemplate
+            prompt = PromptTemplate.from_template(
+                """您是 Omniverse Python 代碼生成專家，專門撰寫高品質的 Omniverse Python 腳本。
+
+用戶需求：{request}
+
+請基於以下 Omniverse API 知識庫生成 Python 代碼：
+
+## 核心 API 參考：
+
+### USD 操作
+```python
+import omni.usd
+from pxr import Usd, UsdGeom, Sdf, Gf
+
+# 獲取當前 Stage
+stage = omni.usd.get_context().get_stage()
+
+# 創建原始物件
+cube_prim = UsdGeom.Cube.Define(stage, "/World/MyCube")
+sphere_prim = UsdGeom.Sphere.Define(stage, "/World/MySphere")
+
+# 設置變換
+xform = UsdGeom.Xformable(cube_prim)
+xform.AddTranslateOp().Set(Gf.Vec3d(1.0, 2.0, 3.0))
+xform.AddRotateXYZOp().Set(Gf.Vec3f(0, 45, 0))
+xform.AddScaleOp().Set(Gf.Vec3f(2.0, 2.0, 2.0))
+```
+
+### Kit Commands
+```python
+import omni.kit.commands
+
+# 創建物件
+omni.kit.commands.execute('CreatePrimWithDefaultXform',
+    prim_type='Cube',
+    prim_path='/World/NewCube',
+    attributes={'size': 2.0}
+)
+
+# 刪除物件
+omni.kit.commands.execute('DeletePrims', paths=['/World/OldCube'])
+
+# 移動物件
+omni.kit.commands.execute('TransformPrimCommand',
+    path='/World/MyCube',
+    new_transform_matrix=[[2,0,0,5], [0,2,0,10], [0,0,2,15], [0,0,0,1]]
+)
+```
+
+### 材質和渲染
+```python
+import omni.kit.commands
+from pxr import UsdShade
+
+# 創建材質
+omni.kit.commands.execute('CreateAndBindMdlMaterialFromLibrary',
+    mdl_name='OmniGlass.mdl',
+    mtl_name='OmniGlass',
+    mtl_path='/World/Looks/Glass'
+)
+
+# 綁定材質到物件
+omni.kit.commands.execute('BindMaterial',
+    prim_path='/World/MyCube',
+    material_path='/World/Looks/Glass'
+)
+```
+
+### 動畫和時間軸
+```python
+import omni.timeline
+from pxr import Usd
+
+# 設置動畫關鍵幀
+stage = omni.usd.get_context().get_stage()
+cube_prim = stage.GetPrimAtPath("/World/MyCube")
+translate_attr = cube_prim.GetAttribute("xformOp:translate")
+
+# 在第 0 幀設置位置
+translate_attr.Set(Gf.Vec3d(0, 0, 0), Usd.TimeCode(0))
+# 在第 60 幀設置位置
+translate_attr.Set(Gf.Vec3d(10, 0, 0), Usd.TimeCode(60))
+```
+
+## 代碼生成要求：
+
+1. **完整性**：包含所有必要的 import 語句
+2. **錯誤處理**：添加適當的 try/except 包圍
+3. **註釋說明**：為主要操作添加中文註釋
+4. **可執行性**：確保代碼可以直接在 Omniverse 中執行
+5. **最佳實踐**：遵循 Omniverse 開發規範
+
+請生成完整的 Python 代碼，格式如下：
+
+```python
+# 您生成的代碼
+```
+
+生成的代碼："""
+            )
         
-        # 使用 Groq 替代 Ollama（專用於代碼生成的高速模型）
-        model = ChatGroq(
-            groq_api_key=groq_config.api_key,
-            model_name=groq_config.get_model("code"),
+        # 使用統一引擎配置創建模型實例
+        model = engine_config.create_model_instance(
+            task_type="code",
             temperature=0.3,  # 較低溫度以提高代碼準確性
             max_tokens=2000   # 更長的輸出以支援複雜代碼
         )

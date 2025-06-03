@@ -66,13 +66,11 @@ Omniverse 語意整合平台是一個基於 AI 的智能開發助手，專門為
    pip install -r requirements.txt
    ```
 
-3. **安裝 Ollama 語言模型服務**
+3. **配置 Groq API 金鑰**
    ```bash
-   # 下載並安裝 Ollama
-   curl -fsSL https://ollama.ai/install.sh | sh
-   
-   # 下載 llama3.2:3b 模型
-   ollama pull llama3.2:3b
+   # Groq API 已預配置，如需更換請編輯 groq_config.py
+   # 或設置環境變數
+   export GROQ_API_KEY="your_groq_api_key_here"
    ```
 
 4. **啟動平台**
@@ -262,7 +260,7 @@ response = requests.post(
 
 - [NVIDIA Omniverse](https://www.nvidia.com/omniverse/) - 提供強大的 3D 協作平台
 - [LangChain](https://langchain.com/) - 強大的語言模型應用框架
-- [Ollama](https://ollama.ai/) - 本地語言模型推理引擎
+- [Groq](https://groq.ai/) - 本地語言模型推理引擎
 - [Streamlit](https://streamlit.io/) - 優秀的 Python Web 應用框架
 
 ## 📞 聯絡資訊

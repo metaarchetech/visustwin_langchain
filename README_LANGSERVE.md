@@ -19,9 +19,12 @@ langserve_launch_example/
 
 ### `chain.py` 的修改
 - **原始功能**：OpenAI 驅動的一般性對話
-- **現在功能**：Ollama 驅動的 Omniverse 專業技術查詢
-- **語言模型**：從 OpenAI 改為 Ollama (llama3.2:3b)
+- **現在功能**：Groq 驅動的 Omniverse 專業技術查詢
+- **語言模型**：從 OpenAI 改為 Groq (llama3-8b-8192 + llama3-70b-8192)
 - **提示模板**：專門為 Omniverse 技術領域設計
+- **查詢範圍**：支援 USD、RTX、Physics、Extensions、Connectors 等
+- **技術深度**：提供企業級技術架構分析與實作建議
+- **回應速度**：優化的提示模板確保專業且準確的技術回應
 
 ### `server.py` 的修改  
 - **原始功能**：基本的 FastAPI 服務
@@ -44,7 +47,7 @@ pip install .
 
 ### 使用方式
 
-**注意**：原始版本需要 OpenAI API 金鑰，現在版本使用 Ollama 不需要。
+**注意**：原始版本需要 OpenAI API 金鑰，現在版本使用 Groq 不需要。
 
 設置 OpenAI API 金鑰（原始版本）：
 ```bash

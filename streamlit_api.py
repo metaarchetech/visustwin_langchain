@@ -5,6 +5,7 @@ import uvicorn
 from langserve_launch_example.chain import get_chain
 import threading
 import asyncio
+from datetime import datetime
 
 # 創建 FastAPI 應用
 app = FastAPI(
@@ -67,35 +68,54 @@ async def process_query(request: QueryRequest):
 @app.get("/api/status")
 async def get_service_status():
     """獲取服務狀態"""
-    return {
-        "service": "omniverse-semantic-api",
-        "status": "running",
-        "ai_model": "ollama-llama3.2:3b",
-        "features": {
-            "semantic_analysis": True,
-            "knowledge_integration": True,
-            "collaborative_development": True
+    try:
+        from groq_config import engine_config
+        engine_status = engine_config.get_engine_status()
+        current_engine = engine_status["current_engine"]
+        current_model = engine_status["current_model"]
+        
+        return {
+            "service": "omniverse-semantic-api",
+            "status": "running",
+            "ai_engine": f"{current_engine}-{current_model}",
+            "available_engines": engine_status["available_engines"],
+            "features": {
+                "semantic_analysis": True,
+                "knowledge_integration": True,
+                "collaborative_development": True,
+                "engine_switching": True
+            }
         }
-    }
+    except Exception as e:
+        return {
+            "service": "omniverse-semantic-api",
+            "status": "error",
+            "error": str(e),
+            "ai_engine": "unknown",
+            "features": {}
+        }
 
 @app.post("/api/scene/analyze")
 async def analyze_scene_context(scene_data: dict):
     """分析場景上下文並提供建議"""
     try:
+        from groq_config import engine_config
+        
         # 基於場景資料生成語意查詢
         scene_summary = f"場景包含 {len(scene_data.get('objects', []))} 個物件"
         query = f"分析以下 Omniverse 場景並提供優化建議：{scene_summary}"
         
         response = chain.invoke({"topic": query})
         
+        engine_status = engine_config.get_engine_status()
+        current_engine = engine_status["current_engine"]
+        current_model = engine_status["current_model"]
+        
         return {
-            "analysis": response,
-            "scene_objects_count": len(scene_data.get('objects', [])),
-            "recommendations": [
-                "考慮使用 LOD (Level of Detail) 優化渲染效能",
-                "檢查材質節點的複雜度",
-                "確保物理屬性設定正確"
-            ]
+            "response": response,
+            "timestamp": datetime.now().isoformat(),
+            "ai_engine": f"{current_engine}-{current_model}",
+            "query_type": "semantic_analysis"
         }
         
     except Exception as e:
