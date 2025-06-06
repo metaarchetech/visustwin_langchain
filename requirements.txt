@@ -31,4 +31,5 @@ pytest-asyncio==0.21.1
 
 # Note: Omniverse-specific dependencies (omni.usd, omni.kit.commands, pxr) 
 # are only available in Omniverse Kit environment or with USD standalone installation
-# These will be automatically detected and the platform will run in simulation mode if not available 
+# These will be automatically detected and the platform will run in simulation mode if not available
+psutil==5.9.6 
