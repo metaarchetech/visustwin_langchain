@@ -69,7 +69,10 @@ async def process_query(request: QueryRequest):
 async def get_service_status():
     """獲取服務狀態"""
     try:
-        from groq_config import engine_config
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+        from src.config.groq_config import engine_config
         engine_status = engine_config.get_engine_status()
         current_engine = engine_status["current_engine"]
         current_model = engine_status["current_model"]
@@ -99,7 +102,10 @@ async def get_service_status():
 async def analyze_scene_context(scene_data: dict):
     """分析場景上下文並提供建議"""
     try:
-        from groq_config import engine_config
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+        from src.config.groq_config import engine_config
         
         # 基於場景資料生成語意查詢
         scene_summary = f"場景包含 {len(scene_data.get('objects', []))} 個物件"

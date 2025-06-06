@@ -7,7 +7,10 @@ from langchain_groq import ChatGroq
 from langchain.prompts import ChatPromptTemplate, PromptTemplate
 from langchain.schema.runnable import Runnable
 from langchain.schema.output_parser import StrOutputParser
-from groq_config import engine_config
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from src.config.groq_config import engine_config
 import json
 import traceback
 import sys

@@ -1,4 +1,4 @@
-# Omniverse 語意整合平台
+# Omniverse Exec AI
 
 <div align="center">
 
@@ -7,13 +7,13 @@
 ![Python](https://img.shields.io/badge/python-3.10+-blue?style=for-the-badge&logo=python)
 ![Streamlit](https://img.shields.io/badge/streamlit-1.28+-ff4b4b?style=for-the-badge&logo=streamlit)
 
-**企業級智能語意分析與協作開發環境**
+**AI 驅動的 Omniverse 自然語言執行平台**
 
 </div>
 
 ## 📋 項目概述
 
-Omniverse 語意整合平台是一個基於 AI 的智能開發助手，專門為 NVIDIA Omniverse 生態系統設計。該平台整合了先進的語言模型和語意分析技術，為開發者提供：
+Omniverse Exec AI 是一個革命性的自然語言驅動平台，專門為 NVIDIA Omniverse 生態系統設計。該平台將先進的 AI 語言模型與 Omniverse 無縫整合，實現：
 
 - 🤖 **AI 驅動的代碼生成**：自然語言轉換為 Omniverse Python 腳本
 - 🧠 **智能語意查詢**：深度理解技術文檔和 API 規格
