@@ -76,7 +76,7 @@ Omniverse Exec AI 是一個革命性的自然語言驅動平台，專門為 NVID
 4. **啟動平台**
    ```bash
    # 啟動 Streamlit 主界面（推薦）
-   streamlit run streamlit_app.py
+   streamlit run src/ui/streamlit_app.py
    
    # 或啟動 LangServe API 服務
    python -m langserve_launch_example.server

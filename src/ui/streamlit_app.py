@@ -599,6 +599,8 @@ st.markdown("""
     header {visibility: hidden;}
     .stDeployButton {display: none;}
     
+    .online-status { color: green; font-weight: bold; }
+    .offline-status { color: red; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -758,9 +760,6 @@ def show_fastapi_control_panel():
         </div>
         """, unsafe_allow_html=True)
 
-# 顯示 FastAPI 控制面板
-show_fastapi_control_panel()
-
 # --- 主界面 ---
 st.markdown('<h1 class="main-title">OMNIVERSE EXEC AI</h1>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">natural language to omniverse code generation<br/>自然語言轉 Omniverse 代碼生成</div>', unsafe_allow_html=True)
@@ -874,25 +873,13 @@ if "generated_code" in st.session_state:
 
 # 側邊欄：系統狀態與設定
 with st.sidebar:
-    st.markdown('<h2>system control / 系統控制</h2>', unsafe_allow_html=True)
-    
-    # FastAPI 後端狀態
-    st.markdown('<h3>backend connection / 後端連接</h3>', unsafe_allow_html=True)
+    st.subheader("系統狀態")
+    # 檢查 FastAPI 後端連接狀態
     fastapi_status, fastapi_connected = check_fastapi_status()
     if fastapi_connected:
-        st.markdown(f"""
-        <div style="background: #0a0a0a; border: 1px solid #222222; border-radius: 2px; padding: 8px; color: #00ff00; font-family: 'IBM Plex Mono', monospace; font-size: 11px;">
-            status: connected / 狀態：已連接<br/>
-            endpoint: {fastapi_status}
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("<p class='online-status'>✅ 在線</p>", unsafe_allow_html=True)
     else:
-        st.markdown(f"""
-        <div style="background: #0a0a0a; border: 1px solid #222222; border-left: 2px solid #ff6b6b; border-radius: 2px; padding: 8px; color: #ff6b6b; font-family: 'IBM Plex Mono', monospace; font-size: 11px;">
-            status: disconnected / 狀態：未連接<br/>
-            start: python fastapi_server.py
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("<p class='offline-status'>❌ 離線</p>", unsafe_allow_html=True)
     
     st.markdown('<hr style="margin: 1rem 0;">', unsafe_allow_html=True)
     
@@ -902,12 +889,16 @@ with st.sidebar:
         engine = get_ai_engine()
         current_engine = engine.get_current_engine()
         
-        # 手動刷新按鈕
-        if st.button("refresh engines / 刷新引擎", key="refresh_engines"):
-            # 強制重新檢測所有引擎
+        # 首次載入時檢查是否需要初始化引擎狀態
+        if "engines_initialized" not in st.session_state:
+            # 首次載入：執行完整檢測
+            engines = engine.get_available_engines(force_test=True)
+            st.session_state.engines_initialized = True
+        elif st.button("refresh engines / 刷新引擎", key="refresh_engines"):
+            # 手動刷新：強制重新檢測所有引擎
             engines = engine.get_available_engines(force_test=True)
         else:
-            # 使用緩存結果（避免每次刷新都測試）
+            # 正常情況：使用緩存結果（避免頻繁測試）
             engines = engine.get_available_engines(force_test=False)
         
         # 顯示引擎狀態詳情
@@ -918,7 +909,7 @@ with st.sidebar:
                 if is_connected:
                     model_name = engine.get_model("default")
                     st.markdown(f"""
-                    <div style="background: #0a0a0a; border: 1px solid #222222; border-radius: 2px; padding: 8px; margin: 4px 0; color: #ffffff; font-family: 'IBM Plex Mono', monospace; font-size: 11px;">
+                    <div style="background: #0a0a0a; border: 1px solid #222222; border-left: 2px solid #00ff00; border-radius: 2px; padding: 8px; margin: 4px 0; color: #00ff00; font-family: 'IBM Plex Mono', monospace; font-size: 11px;">
                         {name}: active / 使用中<br/>
                         model: {model_name}
                     </div>
@@ -943,25 +934,56 @@ with st.sidebar:
         if len([eng for eng, avail in engines.items() if avail]) > 1:
             st.markdown('<hr style="margin: 0.5rem 0;">', unsafe_allow_html=True)
             available_engines = [name for name, avail in engines.items() if avail]
-            new_engine = st.selectbox(
+            
+            # 使用 session_state 來存儲選擇的引擎，避免觸發重新檢測
+            if "selected_engine" not in st.session_state:
+                st.session_state.selected_engine = current_engine
+            
+            # 下拉選單選擇引擎（不觸發任何檢測）
+            selected_engine = st.selectbox(
                 "switch engine / 切換引擎",
                 available_engines,
-                index=available_engines.index(current_engine) if current_engine in available_engines else 0
+                index=available_engines.index(st.session_state.selected_engine) if st.session_state.selected_engine in available_engines else 0,
+                key="engine_selector"
             )
-            if st.button("confirm switch / 確認切換") and new_engine != current_engine:
-                if engine.switch_engine(new_engine):
-                    st.markdown(f"""
-                    <div style="background: #0a0a0a; border: 1px solid #222222; border-radius: 2px; padding: 8px; color: #ffffff; font-family: 'IBM Plex Mono', monospace; font-size: 11px;">
-                        switched to {new_engine} / 已切換至 {new_engine}
-                    </div>
-                    """, unsafe_allow_html=True)
-                    st.rerun()
-                else:
-                    st.markdown(f"""
-                    <div style="background: #0a0a0a; border: 1px solid #222222; border-left: 2px solid #ff6b6b; border-radius: 2px; padding: 8px; color: #ff6b6b; font-family: 'IBM Plex Mono', monospace; font-size: 11px;">
-                        switch failed: {new_engine} / 切換失敗：{new_engine}
-                    </div>
-                    """, unsafe_allow_html=True)
+            
+            # 更新 session_state 中的選擇
+            st.session_state.selected_engine = selected_engine
+            
+            # 顯示當前狀態
+            if selected_engine != current_engine:
+                st.markdown(f"""
+                <div style="background: #0a0a0a; border: 1px solid #222222; border-radius: 2px; padding: 6px; margin: 4px 0; color: #aaaaaa; font-family: 'IBM Plex Mono', monospace; font-size: 10px;">
+                    ready to switch: {current_engine} → {selected_engine}
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # 確認切換按鈕（只有選擇不同引擎時才啟用）
+            if st.button("confirm switch / 確認切換", disabled=selected_engine == current_engine) and selected_engine != current_engine:
+                with st.spinner(f"switching to {selected_engine}..."):
+                    if engine.switch_engine(selected_engine):
+                        st.markdown(f"""
+                        <div style="background: #0a0a0a; border: 1px solid #222222; border-left: 2px solid #00ff00; border-radius: 2px; padding: 8px; color: #00ff00; font-family: 'IBM Plex Mono', monospace; font-size: 11px;">
+                            switched to {selected_engine} / 已切換至 {selected_engine}
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # 清除所有相關緩存，確保主頁面和側邊欄狀態同步更新
+                        get_ai_status_cached.clear()  # 清除主頁面狀態緩存
+                        
+                        # 重置引擎初始化標記，強制重新檢測
+                        if "engines_initialized" in st.session_state:
+                            del st.session_state.engines_initialized
+                        
+                        # 更新 session_state 並重新載入
+                        st.session_state.selected_engine = selected_engine
+                        st.rerun()
+                    else:
+                        st.markdown(f"""
+                        <div style="background: #0a0a0a; border: 1px solid #222222; border-left: 2px solid #ff6b6b; border-radius: 2px; padding: 8px; color: #ff6b6b; font-family: 'IBM Plex Mono', monospace; font-size: 11px;">
+                            switch failed: {selected_engine} / 切換失敗：{selected_engine}
+                        </div>
+                        """, unsafe_allow_html=True)
             
     except Exception as e:
         st.markdown(f"""
@@ -973,6 +995,11 @@ with st.sidebar:
         # 顯示詳細錯誤（開發用）
         with st.expander("error details / 錯誤詳情"):
             st.code(str(e))
+    
+    st.markdown('<hr style="margin: 1rem 0;">', unsafe_allow_html=True)
+    
+    # FastAPI 控制面板
+    show_fastapi_control_panel()
     
     st.markdown('<hr style="margin: 1rem 0;">', unsafe_allow_html=True)
     
